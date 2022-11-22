@@ -10,14 +10,21 @@ app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", async function (request, response) {
-  const allTodos = await Todo.getTodos();
+  // const allTodos = await Todo.allTodos();
+  const overDueItems = await Todo.overDue();
+  const dueTodayItems = await Todo.dueToday();
+  const dueLaterItems = await Todo.dueLater();
   if (request.accepts("html")) {
     response.render("index", {
-      allTodos,
+      overDueItems,
+      dueTodayItems,
+      dueLaterItems,
     });
   } else {
     response.json({
-      allTodos,
+      overDueItems,
+      dueTodayItems,
+      dueLaterItems,
     });
   }
 });
