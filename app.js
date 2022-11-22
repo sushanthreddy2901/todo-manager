@@ -1,31 +1,37 @@
 const express = require("express");
 const app = express();
+var csrf = require("csurf");
+var cookieParser = require("cookie-parser");
 const { Todo } = require("./models");
 const bodyParser = require("body-parser");
 const path = require("path");
 
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser("Some secret string"));
+app.use(csrf({ cookie: true }));
+
 app.set("view engine", "ejs");
 // eslint-disable-next-line no-undef
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", async function (request, response) {
   // const allTodos = await Todo.allTodos();
-  const overDueItems = await Todo.overDue();
-  const dueTodayItems = await Todo.dueToday();
-  const dueLaterItems = await Todo.dueLater();
+  const overDue = await Todo.overDue();
+  const dueToday = await Todo.dueToday();
+  const dueLater = await Todo.dueLater();
   if (request.accepts("html")) {
     response.render("index", {
-      overDueItems,
-      dueTodayItems,
-      dueLaterItems,
+      overDue,
+      dueToday,
+      dueLater,
+      csrfToken: request.csrfToken(),
     });
   } else {
     response.json({
-      overDueItems,
-      dueTodayItems,
-      dueLaterItems,
+      overDue,
+      dueToday,
+      dueLater,
     });
   }
 });
