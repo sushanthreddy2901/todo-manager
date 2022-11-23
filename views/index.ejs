@@ -10,12 +10,13 @@
     <title>To-Do Manager</title>
     <script>
         var token = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
-        function updateTodo(id) {
+        function updateTodo(id, state) {
             fetch(`/todos/${id}`, {
                 method: "put",
                 headers: {"Content-Type":"application/json"},
                 body: JSON.stringify({
-                    "_csrf":token
+                    "_csrf":token,
+                    "completed":state
                 })
             }).then((res)=>{
                 if (res.ok) {
@@ -56,7 +57,12 @@
                     </div>
                 </div>
             </form>
-            <%- include('todos.ejs') %>
+            <div>
+                <%- include('todos.ejs', {title: "Overdue", data: overDue}) %>
+                <%- include('todos.ejs', {title: "Due Today", data: dueToday}) %>
+                <%- include('todos.ejs', {title: "Due Later", data: dueLater}) %>
+                <%- include('todos.ejs', {title: "Completed Items", data: completedItems}) %>
+            </div>
         </div>
     </div>
 </body>
