@@ -1,7 +1,21 @@
 "use strict";
 
+const { query } = require("express");
+
 module.exports = {
   async up(queryInterface, Sequelize) {
+    await queryInterface.addColumn("Todos", "userID", {
+      type: Sequelize.DataTypes.INTEGER,
+    });
+
+    await queryInterface.addConstraint("Todos", {
+      fields: ["userID"],
+      type: "foreign key",
+      references: {
+        table: "Users",
+        field: "id",
+      },
+    });
     /**
      * Add altering commands here.
      *
@@ -11,6 +25,7 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
+    await queryInterface.removeColumn("Todos", "userID");
     /**
      * Add reverting commands here.
      *

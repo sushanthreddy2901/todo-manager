@@ -1,5 +1,5 @@
 "use strict";
-const { Op } = require("sequelize");
+const { Op, where } = require("sequelize");
 const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Todo extends Model {
@@ -9,65 +9,82 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
+      Todo.belongsTo(models.User, {
+        foreignKey: "userID",
+      });
       // define association here
     }
 
-    static addTodo({ title, dueDate }) {
-      return this.create({ title: title, dueDate: dueDate, completed: false });
+    static addTodo({ title, dueDate, userID }) {
+      return this.create({
+        title: title,
+        dueDate: dueDate,
+        completed: false,
+        userID,
+      });
     }
 
-    static getTodos() {
-      return this.findAll();
+    static getTodos(userID) {
+      return this.findAll({
+        where: {
+          userID,
+        },
+      });
     }
 
-    static async overDue() {
+    static async overDue(userID) {
       return await Todo.findAll({
         where: {
           dueDate: {
             [Op.lt]: new Date(),
           },
+          userID,
           completed: false,
         },
         order: [["id", "ASC"]],
       });
     }
 
-    static async dueToday() {
+    static async dueToday(userID) {
       return await Todo.findAll({
         where: {
           dueDate: {
             [Op.eq]: new Date(),
           },
+          userID,
           completed: false,
         },
         order: [["id", "ASC"]],
       });
     }
 
-    static async dueLater() {
+    static async dueLater(userID) {
       return await Todo.findAll({
         where: {
           dueDate: {
             [Op.gt]: new Date(),
           },
+          userID,
           completed: false,
         },
         order: [["id", "ASC"]],
       });
     }
 
-    static async completedItems() {
+    static async completedItems(userID) {
       return await Todo.findAll({
         where: {
           completed: true,
+          userID,
         },
       });
     }
 
-    static async remove(id) {
+    static async remove(id, userID) {
       return this.destroy({
         where: {
           id,
+          userID,
         },
       });
     }
