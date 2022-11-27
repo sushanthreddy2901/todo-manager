@@ -55,8 +55,8 @@ passport.use(
             return done(null, false, { message: "Invalid password" });
           }
         })
-        .catch((error) => {
-          return done(error);
+        .catch(() => {
+          return done(null, false, { message: "Invalid Email-ID" });
         });
     }
   )
