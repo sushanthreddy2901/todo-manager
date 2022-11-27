@@ -9,10 +9,14 @@ const bcrypt = require("bcrypt");
 const passport = require("passport");
 const connectEnsureLogin = require("connect-ensure-login");
 const session = require("express-session");
+const flash = require("connect-flash");
 const LocalStratergy = require("passport-local");
 
 const saltRounds = 10;
 
+// eslint-disable-next-line no-undef
+app.set("views", path.join(__dirname, "views"));
+app.use(flash());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser("Some secret string"));
@@ -26,6 +30,11 @@ app.use(
     },
   })
 );
+
+app.use(function (request, response, next) {
+  response.locals.messages = request.flash();
+  next();
+});
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -43,11 +52,11 @@ passport.use(
           if (result) {
             return done(null, user);
           } else {
-            return done("Invalid Password");
+            return done(null, false, { message: "Invalid password" });
           }
         })
         .catch((error) => {
-          return error;
+          return done(error);
         });
     }
   )
@@ -83,27 +92,32 @@ app.get(
   "/todos",
   connectEnsureLogin.ensureLoggedIn(),
   async function (request, response) {
-    const loggedIn = request.user.id;
-    const overDue = await Todo.overDue(loggedIn);
-    const dueToday = await Todo.dueToday(loggedIn);
-    const dueLater = await Todo.dueLater(loggedIn);
-    const completedItems = await Todo.completedItems(loggedIn);
-    if (request.accepts("html")) {
-      response.render("todos", {
-        title: "To-Do Manager",
-        overDue,
-        dueToday,
-        dueLater,
-        completedItems,
-        csrfToken: request.csrfToken(),
-      });
-    } else {
-      response.json({
-        overDue,
-        dueToday,
-        dueLater,
-        completedItems,
-      });
+    try {
+      const loggedIn = request.user.id;
+      const overDue = await Todo.overDue(loggedIn);
+      const dueToday = await Todo.dueToday(loggedIn);
+      const dueLater = await Todo.dueLater(loggedIn);
+      const completedItems = await Todo.completedItems(loggedIn);
+      if (request.accepts("html")) {
+        response.render("todos", {
+          title: "To-Do Manager",
+          overDue,
+          dueToday,
+          dueLater,
+          completedItems,
+          csrfToken: request.csrfToken(),
+        });
+      } else {
+        response.json({
+          overDue,
+          dueToday,
+          dueLater,
+          completedItems,
+        });
+      }
+    } catch (err) {
+      console.log(err);
+      return response.status(422).json(err);
     }
   }
 );
@@ -116,6 +130,22 @@ app.get("/signup", (request, response) => {
 });
 
 app.post("/users", async (request, response) => {
+  if (!request.body.firstName) {
+    request.flash("error", "Please enter your first name");
+    return response.redirect("/signup");
+  }
+  if (!request.body.email) {
+    request.flash("error", "Please enter email ID");
+    return response.redirect("/signup");
+  }
+  if (!request.body.password) {
+    request.flash("error", "Please enter your password");
+    return response.redirect("/signup");
+  }
+  if (request.body.password < 8) {
+    request.flash("error", "Password length should be atleast 8");
+    return response.redirect("/signup");
+  }
   const hashedPwd = await bcrypt.hash(request.body.password, saltRounds);
   try {
     const user = await User.create({
@@ -127,11 +157,14 @@ app.post("/users", async (request, response) => {
     request.login(user, (err) => {
       if (err) {
         console.log(err);
+        response.redirect("/");
+      } else {
+        response.redirect("/todos");
       }
-      response.redirect("/todos");
     });
   } catch (error) {
-    console.log(error);
+    request.flash("error", error.message);
+    return response.redirect("/signup");
   }
 });
 
@@ -144,7 +177,10 @@ app.get("/login", (request, response) => {
 
 app.post(
   "/session",
-  passport.authenticate("local", { failureRedirect: "/login" }),
+  passport.authenticate("local", {
+    failureRedirect: "/login",
+    failureFlash: true,
+  }),
   (request, response) => {
     response.redirect("/todos");
   }
@@ -189,6 +225,14 @@ app.post(
   "/todos",
   connectEnsureLogin.ensureLoggedIn(),
   async function (request, response) {
+    if (request.body.title.length < 5) {
+      request.flash("error", "Title length should be atleast 5");
+      return response.redirect("/todos");
+    }
+    if (!request.body.dueDate) {
+      request.flash("error", "Please select a due date");
+      return response.redirect("/todos");
+    }
     try {
       await Todo.addTodo({
         title: request.body.title,
